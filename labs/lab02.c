@@ -17,6 +17,11 @@ uint16_t motor2_speed;
 uint16_t motor3_speed;
 uint16_t motor4_speed;
 
+uint16_t emer_flag = 0;
+uint16_t data_flag = 0;
+uint16_t orien_flag = 0;
+uint16_t pid_flag = 0;
+
 /* Global var declarations */
 // Defined in lab2.h, used for getting PID status of all 4 motors
 //MotorSpeeds motor_speeds; 
@@ -61,19 +66,31 @@ int main() {
 	config_timer();
 	
 	while (1) {
-		if (pid_set_flag == 1) {
 
-		  // Get motor speeds from the struct
-		  motor1_speed = (uint16_t)motor_speeds.m1;
-	          motor2_speed = (uint16_t)motor_speeds.m2;
-	          motor3_speed = (uint16_t)motor_speeds.m3;
-	          motor4_speed = (uint16_t)motor_speeds.m4;
+		if (emer_flag == 1) {
+			detectEmergency();
+			emer_flag = 0;
+		} else if (data_flag == 1) {
+			refreshSensorData();
+			data_flag = 0;
+		} else if (orien_flag == 1) {
+			calculateOrientation();
+			orien_flag = 0;
+		} else if (pid_flag == 1) {
+			updatePid(&motor_speeds);
 
-	          // Set motors
-	          setMotor1(CCR1_Val * motor1_speed);
-	          setMotor2(CCR1_Val * motor2_speed);
-	          setMotor3(CCR1_Val * motor3_speed);
-	          setMotor4(CCR1_Val * motor4_speed);
+			// Get motor speeds from the struct
+			motor1_speed = (uint16_t)motor_speeds.m1;
+			motor2_speed = (uint16_t)motor_speeds.m2;
+			motor3_speed = (uint16_t)motor_speeds.m3;
+			motor4_speed = (uint16_t)motor_speeds.m4;
+
+			// Set motors
+			setMotor1(CCR1_Val * motor1_speed);
+			setMotor2(CCR1_Val * motor2_speed);
+			setMotor3(CCR1_Val * motor3_speed);
+			setMotor4(CCR1_Val * motor4_speed);
+			pid_flag = 0;				
 		}
 	}
  
@@ -336,8 +353,8 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-        detectEmergency();
-
+        //detectEmergency();
+		emer_flag = 1;
         // Interrupt needs to trigger again in 10ms
         capture  = TIM_GetCapture1(TIM2);
         TIM_SetCompare1(TIM2, capture + DELAY_10MS);
@@ -348,8 +365,8 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-        refreshSensorData();
-
+        //refreshSensorData();
+		data_flag = 1;
         // Interrupt needs to trigger again in 100ms
         capture  = TIM_GetCapture2(TIM2);
         TIM_SetCompare2(TIM2, capture + DELAY_100MS);
@@ -361,7 +378,8 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-        calculateOrientation();
+        //calculateOrientation();
+		orien_flag = 1;
         // This function refreshes once a second, so no need to reset the
         // compare register
     // Channel 4 is the interrupt for updatePid()
@@ -373,8 +391,8 @@ void TIM2_IRQHandler(void) {
 
         // This function returns new motor PIDs, which means the main
         // program needs to do additional processing after the interrupt
-        updatePid(&motor_speeds);
-        pid_set_flag = 1;
+        //updatePid(&motor_speeds);
+        pid_flag = 1;
         // This function refreshes once a second, so no need to reset the
         // compare register
     }
