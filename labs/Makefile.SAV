@@ -19,15 +19,15 @@ CFLAGS = -O0 -g3 -mcpu=cortex-m3 -mthumb -I$(STM_STD_PERIF)/inc -I$(STM_STARTUP)
 
 # build all relevant files and create .elf
 all:
-	$(CC) $(CFLAGS) $(STM_DEVICE_SUPPORT)/system_stm32f10x.c $(STM_STARTUP)/startup_stm32f10x_md.s lab02.c $(STM_STD_PERIF)/src/stm32f10x_gpio.c $(STM_STD_PERIF)/src/stm32f10x_rcc.c -o lab02.elf
+	$(CC) $(CFLAGS) $(STM_STARTUP)/startup_stm32f10x_md.s lab02.c $(STM_STD_PERIF)/src/stm32f10x_gpio.c $(STM_STD_PERIF)/src/stm32f10x_flash.c $(STM_STD_PERIF)/src/stm32f10x_rcc.c init.c -o lab02.elf
 
 clean:
-	rm -rf *o blinky
+	rm -rf *elf lab02 
 
 # program elf into crazyflie flash memory with busblaster
 flash:
 	openocd -d0 -f interface/busblaster.cfg -f target/stm32f1x.cfg -c init -c targets -c "reset halt" \
-                 -c "flash write_image erase blinky.elf" -c "verify_image blinky.elf" -c "reset run" -c shutdown
+                 -c "flash write_image erase lab02.elf" -c "verify_image lab02.elf" -c "reset run" -c shutdown
 
 # Start openocd, so we can use it with gdb 
 openocd:
