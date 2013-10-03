@@ -5,8 +5,17 @@
  */
 
 #include "init.h"
+#include "stm32f10x.h"
 #include "lab2.h"
 #include "stm32f10x_conf.h"
+uint16_t CCR1_Val = 60;                 // PWM pulse value
+uint32_t SystemCoreClock = 72000000;    // SYSCLK frequency
+
+uint16_t step = 0;
+uint16_t motor1_speed;
+uint16_t motor2_speed;
+uint16_t motor3_speed;
+uint16_t motor4_speed;
 
 /* Global var declarations */
 // Defined in lab2.h, used for getting PID status of all 4 motors
@@ -25,12 +34,17 @@ void config_gpio(void);
 void config_nvic(void);
 void TIM2_IRQHandler(void);
 void TIM1_IRQHandler(void);
+//void Delay(__IO uint32_t nTime);
+void setMotor1(uint16_t step);
+void setMotor2(uint16_t step);
+void setMotor3(uint16_t step);
+void setMotor4(uint16_t step);
 
 /* #defines for constants */
 #define PRESCALE			 1800   // Divides the 72MHz SYSCLK so timers run at 40KHz
-#define DELAY_10MS            400   // 10 ms at frequency of 40KHz
-#define DELAY_100MS          4000   // 100 ms at frequency of 40KHz
-#define DELAY_500MS         20000   // Half a second at 40KHz
+#define DELAY_10MS                        400   // 10 ms at frequency of 40KHz
+#define DELAY_100MS                      4000   // 100 ms at frequency of 40KHz
+#define DELAY_500MS                     20000   // Half a second at 40KHz
 #define TIM_PERIOD			39999   // Timers count to 40000 - 1 and then reset
 #define RED_START			 9999   // The red LED's starting time
 #define GREEN_START			19999   // The green LED's starting time
@@ -48,7 +62,18 @@ int main() {
 	
 	while (1) {
 		if (pid_set_flag == 1) {
-		/* NEED PID SCALING CODE */
+
+		  // Get motor speeds from the struct
+		  motor1_speed = (uint16_t)motor_speeds.m1;
+	          motor2_speed = (uint16_t)motor_speeds.m2;
+	          motor3_speed = (uint16_t)motor_speeds.m3;
+	          motor4_speed = (uint16_t)motor_speeds.m4;
+
+	          // Set motors
+	          setMotor1(CCR1_Val * motor1_speed);
+	          setMotor2(CCR1_Val * motor2_speed);
+	          setMotor3(CCR1_Val * motor3_speed);
+	          setMotor4(CCR1_Val * motor4_speed);
 		}
 	}
  
@@ -71,12 +96,12 @@ void config_timer(void) {
 	__IO uint16_t TIM2_CCR3_init = 400;  // Orientation
 	__IO uint16_t TIM2_CCR4_init = 900;  // PID
 	__IO uint16_t TIM1_CCR1_init = 1100; // Debug 
-	__IO uint16_t TIM1_CCR2_init = RED_START;  // Green LED
+	__IO uint16_t TIM1_CCR2_init = RED_START;  // Red LED
 	__IO uint16_t TIM1_CCR3_init = GREEN_START;  // Green LED
 
 	// Set up peripheral clock for timers
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 	
-	RCC_APB2PeriphClockCmd(RCC_APB1Periph_TIM1, ENABLE); 	
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
 	// All of these configs are valid for TIM2 and TIM1
 	timebase_init_struct.TIM_Period = TIM_PERIOD;
@@ -149,6 +174,35 @@ void config_timer(void) {
 	// Enable the timer counters
 	TIM_Cmd(TIM2, ENABLE);
 	TIM_Cmd(TIM1, ENABLE); 
+
+	/* TIM configuration for motors */
+	timebase_init_struct.TIM_Period = 2400;
+	timebase_init_struct.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;
+	timebase_init_struct.TIM_ClockDivision = 0;
+	timebase_init_struct.TIM_CounterMode = TIM_CounterMode_Up;
+
+	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_PWM1;
+	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
+	timer_oc_init_struct.TIM_OCPolarity = TIM_OCPolarity_High;
+
+	TIM_TimeBaseInit(TIM3, &timebase_init_struct);
+	timer_oc_init_struct.TIM_Pulse = 0;
+
+	TIM_OC4Init(TIM3, &timer_oc_init_struct);
+	TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
+
+	TIM_OC3Init(TIM3, &timer_oc_init_struct);
+	TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+
+	TIM_TimeBaseInit(TIM4, &timebase_init_struct);
+
+	TIM_OC4Init(TIM4, &timer_oc_init_struct);
+	TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+	TIM_OC3Init(TIM4, &timer_oc_init_struct);
+	TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+	//Delay(100);
 }
 
 /*
@@ -173,7 +227,7 @@ void config_nvic(void) {
 	NVIC_Init(&nvic_init_struct);
 
 	// Setting up timer 5 interrupts
-	nvic_init_struct.NVIC_IRQChannel = TIM1_IRQn;
+	nvic_init_struct.NVIC_IRQChannel = TIM1_CC_IRQn ;
 	nvic_init_struct.NVIC_IRQChannelPreemptionPriority = 1;
 	nvic_init_struct.NVIC_IRQChannelSubPriority = 2;
 	NVIC_Init(&nvic_init_struct);
@@ -203,6 +257,58 @@ void config_gpio(void) {
 	gpio_init_struct.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &gpio_init_struct);
 
+	// Configure motor pins for PWM output
+	gpio_init_struct.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
+	gpio_init_struct.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(GPIOB, &gpio_init_struct);
+
+}
+
+void setMotor1(uint16_t step){
+  TIM_TimeBaseInit(TIM3, &timebase_init_struct);
+  timer_oc_init_struct.TIM_Pulse = step;
+
+  TIM_OC4Init(TIM3, &timer_oc_init_struct);
+  TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
+
+  /*timer_oc_init_struct.TIM_Pulse = 0;
+
+  TIM_OC3Init(TIM3, &timer_oc_init_struct);
+  TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+
+  TIM_TimeBaseInit(TIM4, &timebase_init_struct);
+
+  TIM_OC4Init(TIM4, &timer_oc_init_struct);
+  TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+  TIM_OC3Init(TIM4, &timer_oc_init_struct);
+  TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+  Delay(1000);*/
+}
+
+void setMotor2(uint16_t step){
+  TIM_TimeBaseInit(TIM3, &timebase_init_struct);
+  timer_oc_init_struct.TIM_Pulse = step;
+
+  TIM_OC3Init(TIM3, &timer_oc_init_struct);
+  TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+}
+
+void setMotor3(uint16_t step){
+  TIM_TimeBaseInit(TIM4, &timebase_init_struct);
+  timer_oc_init_struct.TIM_Pulse = CCR1_Val;
+
+  TIM_OC4Init(TIM4, &timer_oc_init_struct);
+  TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
+}
+
+void setMotor4(uint16_t step){
+  TIM_TimeBaseInit(TIM4, &timebase_init_struct);
+  timer_oc_init_struct.TIM_Pulse = CCR1_Val;
+
+  TIM_OC3Init(TIM4, &timer_oc_init_struct);
+  TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
 }
 
 /*
