@@ -95,10 +95,10 @@ void config_timer(void) {
 	__IO uint16_t TIM2_CCR2_init = 300;  // Data
 	__IO uint16_t TIM2_CCR3_init = 400;  // Orientation
 	__IO uint16_t TIM2_CCR4_init = 900;  // PID
-	__IO uint16_t TIM1_CCR1_init = 1100; // Debug 
+/*	__IO uint16_t TIM1_CCR1_init = 1100; // Debug 
 	__IO uint16_t TIM1_CCR2_init = RED_START;  // Red LED
 	__IO uint16_t TIM1_CCR3_init = GREEN_START;  // Green LED
-
+*/
 	// Set up peripheral clock for timers
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
@@ -111,11 +111,11 @@ void config_timer(void) {
 
 	// Initialize the timebases for TIM2 and TIM1
 	TIM_TimeBaseInit(TIM2, &timebase_init_struct);
-	TIM_TimeBaseInit(TIM1, &timebase_init_struct);
+//	TIM_TimeBaseInit(TIM1, &timebase_init_struct);
 
 	// Configure prescalers for TIM2 and TIM1
 	TIM_PrescalerConfig(TIM2, PRESCALE, TIM_PSCReloadMode_Immediate);
-	TIM_PrescalerConfig(TIM1, PRESCALE, TIM_PSCReloadMode_Immediate);
+//	TIM_PrescalerConfig(TIM1, PRESCALE, TIM_PSCReloadMode_Immediate);
 
 	// Configure output compare timing mode for channel 1 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
@@ -125,10 +125,10 @@ void config_timer(void) {
 	TIM_OC1Init(TIM2, &timer_oc_init_struct);
 	TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
-	timer_oc_init_struct.TIM_Pulse = TIM1_CCR1_init;
+	/*timer_oc_init_struct.TIM_Pulse = TIM1_CCR1_init;
 	TIM_OC1Init(TIM1, &timer_oc_init_struct);
 	TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Disable);
-
+*/
 	// Configure output compare timing mode for channel 2 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
 	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
@@ -136,11 +136,11 @@ void config_timer(void) {
 	timer_oc_init_struct.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OC2Init(TIM2, &timer_oc_init_struct);
 	TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Disable);
-
+/*
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR2_init;
 	TIM_OC2Init(TIM1, &timer_oc_init_struct);
 	TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Disable);
-
+*/
 	// Configure output compare timing mode for channel 3 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
 	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
@@ -148,11 +148,11 @@ void config_timer(void) {
 	timer_oc_init_struct.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OC3Init(TIM2, &timer_oc_init_struct);
 	TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Disable);
-
+/*
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR3_init;
 	TIM_OC3Init(TIM1, &timer_oc_init_struct);
 	TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Disable);
-
+*/
 	// Configure output compare timing mode for channel 4 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
 	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
@@ -161,22 +161,23 @@ void config_timer(void) {
 	TIM_OC4Init(TIM2, &timer_oc_init_struct);
 	TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
-	// Only need 3 channels for timer 5
-	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Disable;
+	// Only need 3 channels for timer 1
+	/*timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Disable;
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR3_init; // Unchanged because unused 
 	TIM_OC4Init(TIM1, &timer_oc_init_struct);
 	TIM_OC4PreloadConfig(TIM1, TIM_OCPreload_Disable);
-	TIM_ClearFlag(TIM1, TIM_FLAG_Update);
+*/
+	//TIM_ClearFlag(TIM1, TIM_FLAG_Update);
 	TIM_ClearFlag(TIM2, TIM_FLAG_Update);
 	TIM_ClearFlag(TIM3, TIM_FLAG_Update);
 	TIM_ClearFlag(TIM4, TIM_FLAG_Update);
 	// Enable the timer interrupts 
 	TIM_ITConfig(TIM2, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3 | TIM_IT_CC4, ENABLE);
-	TIM_ITConfig(TIM1, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3, ENABLE);
+//	TIM_ITConfig(TIM1, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3, ENABLE);
 
 	// Enable the timer counters
 	TIM_Cmd(TIM2, ENABLE);
-	TIM_Cmd(TIM1, ENABLE); 
+//	TIM_Cmd(TIM1, ENABLE); 
 
 	/* TIM configuration for motors */
 	timebase_init_struct.TIM_Period = 2400;
@@ -206,8 +207,8 @@ void config_timer(void) {
 	TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
 
 	// Enable timer update interrupts
-	TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
-	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+//	TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+//	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
 	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
 	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 	//Delay(100);
