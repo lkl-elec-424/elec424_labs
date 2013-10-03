@@ -166,7 +166,10 @@ void config_timer(void) {
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR3_init; // Unchanged because unused 
 	TIM_OC4Init(TIM1, &timer_oc_init_struct);
 	TIM_OC4PreloadConfig(TIM1, TIM_OCPreload_Disable);
-
+	TIM_ClearFlag(TIM1, TIM_FLAG_update);
+	TIM_ClearFlag(TIM2, TIM_FLAG_update);
+	TIM_ClearFlag(TIM3, TIM_FLAG_update);
+	TIM_ClearFlag(TIM4, TIM_FLAG_update);
 	// Enable the timer interrupts 
 	TIM_ITConfig(TIM2, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3 | TIM_IT_CC4, ENABLE);
 	TIM_ITConfig(TIM1, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3, ENABLE);
@@ -202,6 +205,11 @@ void config_timer(void) {
 	TIM_OC3Init(TIM4, &timer_oc_init_struct);
 	TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
 
+	// Enable timer update interrupts
+	TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 	//Delay(100);
 }
 
