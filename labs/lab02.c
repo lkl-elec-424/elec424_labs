@@ -166,10 +166,10 @@ void config_timer(void) {
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR3_init; // Unchanged because unused 
 	TIM_OC4Init(TIM1, &timer_oc_init_struct);
 	TIM_OC4PreloadConfig(TIM1, TIM_OCPreload_Disable);
-	TIM_ClearFlag(TIM1, TIM_FLAG_update);
-	TIM_ClearFlag(TIM2, TIM_FLAG_update);
-	TIM_ClearFlag(TIM3, TIM_FLAG_update);
-	TIM_ClearFlag(TIM4, TIM_FLAG_update);
+	TIM_ClearFlag(TIM1, TIM_FLAG_Update);
+	TIM_ClearFlag(TIM2, TIM_FLAG_Update);
+	TIM_ClearFlag(TIM3, TIM_FLAG_Update);
+	TIM_ClearFlag(TIM4, TIM_FLAG_Update);
 	// Enable the timer interrupts 
 	TIM_ITConfig(TIM2, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3 | TIM_IT_CC4, ENABLE);
 	TIM_ITConfig(TIM1, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3, ENABLE);
@@ -334,6 +334,7 @@ void TIM2_IRQHandler(void) {
 
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
         detectEmergency();
 
         // Interrupt needs to trigger again in 10ms
@@ -345,6 +346,7 @@ void TIM2_IRQHandler(void) {
 
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
+		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
         refreshSensorData();
 
         // Interrupt needs to trigger again in 100ms
@@ -357,6 +359,7 @@ void TIM2_IRQHandler(void) {
 
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
+		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
         calculateOrientation();
         // This function refreshes once a second, so no need to reset the
         // compare register
@@ -365,6 +368,7 @@ void TIM2_IRQHandler(void) {
 
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC4);
+		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
 
         // This function returns new motor PIDs, which means the main
         // program needs to do additional processing after the interrupt
@@ -390,6 +394,7 @@ void TIM1_IRQHandler(void) {
 
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC1);
+		TIM_ClearFlag(TIM1, TIM_FLAG_Update);
         logDebugInfo();
         /* 
          * This function is supposed to happen "whenever there's time," so
@@ -401,6 +406,7 @@ void TIM1_IRQHandler(void) {
 
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC2);
+		TIM_ClearFlag(TIM1, TIM_FLAG_Update);
 
         // Toggle the red LED
         GPIO_WriteBit(GPIOB, GPIO_Pin_4,
@@ -411,6 +417,7 @@ void TIM1_IRQHandler(void) {
 	// Channel 3 is the interrupt handler for the green LED
     } else {
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC3);
+		TIM_ClearFlag(TIM1, TIM_FLAG_Update);
 
         // The green LED flashes at 0.25Hz, so it should only be toggled
         // every other cycle
