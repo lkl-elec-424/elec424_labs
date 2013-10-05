@@ -21,10 +21,10 @@ uint16_t emer_flag = 0;
 uint16_t data_flag = 0;
 uint16_t orien_flag = 0;
 uint16_t pid_flag = 0;
-
+uint16_t log_flag = 0;
 /* Global var declarations */
 // Defined in lab2.h, used for getting PID status of all 4 motors
-//MotorSpeeds motor_speeds; 
+MotorSpeeds motor_speeds; 
 TIM_TimeBaseInitTypeDef timebase_init_struct; // Initial struct for timer modules
 TIM_OCInitTypeDef timer_oc_init_struct;      // Initial struct for output compare timers
 MotorSpeeds motor_speeds;
@@ -91,6 +91,9 @@ int main() {
 			setMotor3(CCR1_Val * motor3_speed);
 			setMotor4(CCR1_Val * motor4_speed);
 			pid_flag = 0;				
+		} else if (log_flag == 1) {
+			logDebugInfo();
+			log_flag = 0;
 		}
 	}
  
@@ -112,10 +115,10 @@ void config_timer(void) {
 	__IO uint16_t TIM2_CCR2_init = 300;  // Data
 	__IO uint16_t TIM2_CCR3_init = 400;  // Orientation
 	__IO uint16_t TIM2_CCR4_init = 900;  // PID
-/*	__IO uint16_t TIM1_CCR1_init = 1100; // Debug 
+	__IO uint16_t TIM1_CCR1_init = 1100; // Debug 
 	__IO uint16_t TIM1_CCR2_init = RED_START;  // Red LED
 	__IO uint16_t TIM1_CCR3_init = GREEN_START;  // Green LED
-*/
+
 	// Set up peripheral clock for timers
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
@@ -128,11 +131,11 @@ void config_timer(void) {
 
 	// Initialize the timebases for TIM2 and TIM1
 	TIM_TimeBaseInit(TIM2, &timebase_init_struct);
-//	TIM_TimeBaseInit(TIM1, &timebase_init_struct);
+	TIM_TimeBaseInit(TIM1, &timebase_init_struct);
 
 	// Configure prescalers for TIM2 and TIM1
 	TIM_PrescalerConfig(TIM2, PRESCALE, TIM_PSCReloadMode_Immediate);
-//	TIM_PrescalerConfig(TIM1, PRESCALE, TIM_PSCReloadMode_Immediate);
+	TIM_PrescalerConfig(TIM1, PRESCALE, TIM_PSCReloadMode_Immediate);
 
 	// Configure output compare timing mode for channel 1 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
@@ -142,10 +145,10 @@ void config_timer(void) {
 	TIM_OC1Init(TIM2, &timer_oc_init_struct);
 	TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
-	/*timer_oc_init_struct.TIM_Pulse = TIM1_CCR1_init;
+	timer_oc_init_struct.TIM_Pulse = TIM1_CCR1_init;
 	TIM_OC1Init(TIM1, &timer_oc_init_struct);
 	TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Disable);
-*/
+
 	// Configure output compare timing mode for channel 2 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
 	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
@@ -153,11 +156,11 @@ void config_timer(void) {
 	timer_oc_init_struct.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OC2Init(TIM2, &timer_oc_init_struct);
 	TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Disable);
-/*
+
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR2_init;
 	TIM_OC2Init(TIM1, &timer_oc_init_struct);
 	TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Disable);
-*/
+
 	// Configure output compare timing mode for channel 3 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
 	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
@@ -165,11 +168,11 @@ void config_timer(void) {
 	timer_oc_init_struct.TIM_OCPolarity = TIM_OCPolarity_High;
 	TIM_OC3Init(TIM2, &timer_oc_init_struct);
 	TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Disable);
-/*
+
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR3_init;
 	TIM_OC3Init(TIM1, &timer_oc_init_struct);
 	TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Disable);
-*/
+
 	// Configure output compare timing mode for channel 4 of TIM2 and TIM1
 	timer_oc_init_struct.TIM_OCMode = TIM_OCMode_Timing;
 	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Enable;
@@ -179,22 +182,22 @@ void config_timer(void) {
 	TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Disable);
 
 	// Only need 3 channels for timer 1
-	/*timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Disable;
+	timer_oc_init_struct.TIM_OutputState = TIM_OutputState_Disable;
 	timer_oc_init_struct.TIM_Pulse = TIM1_CCR3_init; // Unchanged because unused 
 	TIM_OC4Init(TIM1, &timer_oc_init_struct);
 	TIM_OC4PreloadConfig(TIM1, TIM_OCPreload_Disable);
-*/
+
 	//TIM_ClearFlag(TIM1, TIM_FLAG_Update);
 	TIM_ClearFlag(TIM2, TIM_FLAG_Update);
 	TIM_ClearFlag(TIM3, TIM_FLAG_Update);
 	TIM_ClearFlag(TIM4, TIM_FLAG_Update);
 	// Enable the timer interrupts 
 	TIM_ITConfig(TIM2, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3 | TIM_IT_CC4, ENABLE);
-//	TIM_ITConfig(TIM1, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3, ENABLE);
+	TIM_ITConfig(TIM1, TIM_IT_CC1 | TIM_IT_CC2 | TIM_IT_CC3, ENABLE);
 
 	// Enable the timer counters
 	TIM_Cmd(TIM2, ENABLE);
-//	TIM_Cmd(TIM1, ENABLE); 
+	TIM_Cmd(TIM1, ENABLE); 
 
 	/* TIM configuration for motors */
 	timebase_init_struct.TIM_Period = 2400;
@@ -224,11 +227,10 @@ void config_timer(void) {
 	TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
 
 	// Enable timer update interrupts
-//	TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
-//	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
 	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
 	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
-	//Delay(100);
 }
 
 /*
@@ -296,22 +298,7 @@ void setMotor1(uint16_t step){
 
   TIM_OC4Init(TIM3, &timer_oc_init_struct);
   TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
-
-  /*timer_oc_init_struct.TIM_Pulse = 0;
-
-  TIM_OC3Init(TIM3, &timer_oc_init_struct);
-  TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
-
-  TIM_TimeBaseInit(TIM4, &timebase_init_struct);
-
-  TIM_OC4Init(TIM4, &timer_oc_init_struct);
-  TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
-
-  TIM_OC3Init(TIM4, &timer_oc_init_struct);
-  TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
-
-  Delay(1000);*/
-}
+  }
 
 void setMotor2(uint16_t step){
   TIM_TimeBaseInit(TIM3, &timebase_init_struct);
@@ -353,7 +340,6 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-        //detectEmergency();
 		emer_flag = 1;
         // Interrupt needs to trigger again in 10ms
         capture  = TIM_GetCapture1(TIM2);
@@ -365,7 +351,6 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-        //refreshSensorData();
 		data_flag = 1;
         // Interrupt needs to trigger again in 100ms
         capture  = TIM_GetCapture2(TIM2);
@@ -378,7 +363,6 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-        //calculateOrientation();
 		orien_flag = 1;
         // This function refreshes once a second, so no need to reset the
         // compare register
@@ -388,11 +372,7 @@ void TIM2_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM2, TIM_IT_CC4);
 		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-
-        // This function returns new motor PIDs, which means the main
-        // program needs to do additional processing after the interrupt
-        //updatePid(&motor_speeds);
-        pid_flag = 1;
+		pid_flag = 1;
         // This function refreshes once a second, so no need to reset the
         // compare register
     }
@@ -414,7 +394,7 @@ void TIM1_IRQHandler(void) {
         // Clear the IRQ
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC1);
 		TIM_ClearFlag(TIM1, TIM_FLAG_Update);
-        logDebugInfo();
+		log_flag = 1;
         /* 
          * This function is supposed to happen "whenever there's time," so
          * it can just repeat once a second.
