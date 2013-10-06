@@ -29,6 +29,7 @@ void setMotor4(uint16_t step);
 int main(void)
 {
   int pid_set_flag;
+  sys_init();
   /* System Clocks Configuration */
   RCC_Configuration();
   /* GPIO Configuration */
@@ -49,7 +50,7 @@ int main(void)
 
 
   /* TIM configuration */
-TimingDelay = 10000;
+TimingDelay = 9999;
   while(1)
   {
     if(TimingDelay % 10 == 0)
@@ -76,18 +77,21 @@ TimingDelay = 10000;
       logDebugInfo();
 
 	// Toggle the red LED
-    } else if (TimingDelay % 1000 == 11) {
+    } else if (TimingDelay % 2000 == 11) {
       GPIO_WriteBit(GPIOB, GPIO_Pin_4,
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
 
 	// Toggle the green LED
-	} else if (TimingDelay % 2000 == 17) {
+	} else if (TimingDelay % 1000 == 13) {
       GPIO_WriteBit(GPIOB, GPIO_Pin_5,
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
 	}
 	
   }
 }
+
+
+
 void RCC_Configuration(void)
 {
    /* TIM3 and TIM4 clock enable */
@@ -175,7 +179,9 @@ void TimingDelay_Decrement(void)
   if(TimingDelay != 0x00)
     {
       TimingDelay--;
-    }
+  }else if(TimingDelay == 0){
+      TimingDelay = 9999;
+  }
 }
 
 #ifdef  USE_FULL_ASSERT
