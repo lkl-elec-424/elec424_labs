@@ -3,10 +3,12 @@
 #include "stm32f10x_it.h"
 #include "lab2.h"
 #include "stm32f10x_conf.h"
+#include "system_stm32f10x.h"
 TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 TIM_OCInitTypeDef  TIM_OCInitStructure;
 
 uint16_t CCR1_Val = 240;
+//uint32_t SystemCoreClock;
 uint32_t SystemCoreClock = 72000000;
 uint16_t motor1_speed;
 uint16_t motor2_speed;
@@ -15,9 +17,11 @@ uint16_t motor4_speed;
 static  __IO uint32_t TimingDelay;
 MotorSpeeds motor_speeds;
 
+uint16_t already_triggered = 0;
+
 
 /* Private function prototypes -----------------------------------------------*/
-void Delay(__IO uint32_t nTime);
+
 
 void RCC_Configuration(void);
 void GPIO_Configuration(void);
@@ -39,21 +43,21 @@ int main(void)
     {
       while(1);
     }
-  TIM_TimeBaseStructure.TIM_Period = 2400;
+  /*TIM_TimeBaseStructure.TIM_Period = 2400;
   TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
   TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
   TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;*/
 
 
   /* TIM configuration */
 TimingDelay = 9999;
   while(1)
   {
-    if(TimingDelay % 10 == 0)
+    /*if(TimingDelay % 10 == 0)
       detectEmergency();
     else if (TimingDelay % 100 == 4)
       refreshSensorData();
@@ -77,12 +81,15 @@ TimingDelay = 9999;
       logDebugInfo();
 
 	// Toggle the red LED
-    } else if (TimingDelay % 2000 == 11) {
+    } */
+
+      /*if (TimingDelay % 2000 == 11) {
       GPIO_WriteBit(GPIOB, GPIO_Pin_4,
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
 
 	// Toggle the green LED
-	} else if (TimingDelay % 1000 == 13) {
+} else*/ if (TimingDelay % 1000 == 13 && already_triggered == 0) {
+	    already_triggered = 1;
       GPIO_WriteBit(GPIOB, GPIO_Pin_5,
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
 	}
@@ -168,12 +175,7 @@ void setMotor4(uint16_t step){
   TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
 }
 
-void Delay(__IO uint32_t nTime)
-    {
-        TimingDelay = nTime;
 
-        while(TimingDelay != 0);
-    }
 void TimingDelay_Decrement(void)
 {
   if(TimingDelay != 0x00)
@@ -182,6 +184,7 @@ void TimingDelay_Decrement(void)
   }else if(TimingDelay == 0){
       TimingDelay = 9999;
   }
+  already_triggered = 0;
 }
 
 #ifdef  USE_FULL_ASSERT
