@@ -74,7 +74,17 @@ TimingDelay = 10000;
     }
     else if (TimingDelay % 100 == 1){
       logDebugInfo();
-    }
+
+	// Toggle the red LED
+    } else if (TimingDelay % 1000 == 11) {
+      GPIO_WriteBit(GPIOB, GPIO_Pin_4,
+             (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
+
+	// Toggle the green LED
+	} else if (TimingDelay % 2000 == 17) {
+      GPIO_WriteBit(GPIOB, GPIO_Pin_5,
+             (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
+	}
 	
   }
 }
@@ -89,11 +99,21 @@ void RCC_Configuration(void)
 
 void GPIO_Configuration(void)
 {
+  // Disable JTAG so pin attached to red LED can be GPIO
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);	
+
+  // Configure pins for motors
   GPIO_InitTypeDef GPIO_InitStructure;
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  //Configure pins for LEDs
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
