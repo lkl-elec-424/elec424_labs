@@ -19,7 +19,7 @@ CFLAGS = -O0 -g3 -mcpu=cortex-m3 -mthumb -I$(STM_STD_PERIF)/inc -I$(STM_STARTUP)
 
 # build all relevant files and create .elf
 all:
-	$(CC) $(CFLAGS) $(STM_STARTUP)/startup_stm32f10x_md.s lab02.c liblab2.a $(STM_STD_PERIF)/src/stm32f10x_gpio.c $(STM_STD_PERIF)/src/stm32f10x_flash.c $(STM_STD_PERIF)/src/stm32f10x_rcc.c $(STM_STD_PERIF)/src/stm32f10x_tim.c $(STM_STD_PERIF)/src/misc.c stm32f10x_it.c init.c -o lab02.elf
+	$(CC) $(CFLAGS) $(STM_STARTUP)/startup_stm32f10x_md.s lab02.c liblab2.a $(STM_STD_PERIF)/src/stm32f10x_gpio.c $(STM_STD_PERIF)/src/stm32f10x_flash.c $(STM_STD_PERIF)/src/stm32f10x_rcc.c $(STM_STD_PERIF)/src/stm32f10x_tim.c $(STM_STD_PERIF)/src/misc.c $(STM_STD_PERIF)/src/stm32f10x_exti.c stm32f10x_it.c init.c -o lab02.elf
 
 clean:
 	rm -rf *elf lab02 

@@ -14,13 +14,16 @@ uint16_t motor3_speed;
 uint16_t motor4_speed;
 static  __IO uint32_t TimingDelay;
 MotorSpeeds motor_speeds;
-
+uint16_t already_triggered = 0;
+EXTI_InitTypeDef exti_init_struct;
+NVIC_InitTypeDef NVIC_InitStructure;
+ITStatus stat;
 
 /* Private function prototypes -----------------------------------------------*/
-void Delay(__IO uint32_t nTime);
 
 void RCC_Configuration(void);
 void GPIO_Configuration(void);
+void EXTI_Configuration(void);
 void setMotor1(uint16_t step);
 void setMotor2(uint16_t step);
 void setMotor3(uint16_t step);
@@ -29,16 +32,23 @@ void setMotor4(uint16_t step);
 int main(void)
 {
   int pid_set_flag;
+
+  // SYSCLK config
+  sys_init();
+
   /* System Clocks Configuration */
   RCC_Configuration();
+
   /* GPIO Configuration */
   GPIO_Configuration();
+
+  EXTI_Configuration();
 
   if (SysTick_Config(SystemCoreClock/1000))
     {
       while(1);
     }
-  TIM_TimeBaseStructure.TIM_Period = 2400;
+/*  TIM_TimeBaseStructure.TIM_Period = 2400;
   TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
@@ -47,12 +57,12 @@ int main(void)
   TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
   TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
-
+*/
   /* TIM configuration */
 TimingDelay = 10000;
   while(1)
   {
-    if(TimingDelay % 10 == 0)
+ /*   if(TimingDelay % 10 == 0)
       detectEmergency();
     else if (TimingDelay % 100 == 4)
       refreshSensorData();
@@ -76,15 +86,15 @@ TimingDelay = 10000;
       logDebugInfo();
 
 	// Toggle the red LED
-    } else if (TimingDelay % 1000 == 11) {
+    }*//* else if (TimingDelay % 1000 == 11) {
       GPIO_WriteBit(GPIOB, GPIO_Pin_4,
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
 
 	// Toggle the green LED
-	} else if (TimingDelay % 2000 == 17) {
-      GPIO_WriteBit(GPIOB, GPIO_Pin_5,
-             (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
-	}
+	} else*/ if (TimingDelay % 2000 == 17) {
+      EXTI_GenerateSWInterrupt(EXTI_Line0);
+	  stat = EXTI_GetITStatus(EXTI_Line0);
+	} 
 	
   }
 }
@@ -100,21 +110,35 @@ void RCC_Configuration(void)
 void GPIO_Configuration(void)
 {
   // Disable JTAG so pin attached to red LED can be GPIO
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);	
+  //GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);	
 
   // Configure pins for motors
   GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
+ /* GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_Init(GPIOB, &GPIO_InitStructure);*/
 
   //Configure pins for LEDs
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
+}
+
+void EXTI_Configuration(void) {
+	exti_init_struct.EXTI_Line = EXTI_Line0;
+	exti_init_struct.EXTI_Mode = EXTI_Mode_Interrupt;
+	exti_init_struct.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+	exti_init_struct.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&exti_init_struct);
+
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI_Line0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
 }
 
 void setMotor1(uint16_t step){
@@ -164,18 +188,22 @@ void setMotor4(uint16_t step){
   TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
 }
 
-void Delay(__IO uint32_t nTime)
-    {
-        TimingDelay = nTime;
-
-        while(TimingDelay != 0);
-    }
 void TimingDelay_Decrement(void)
 {
   if(TimingDelay != 0x00)
     {
       TimingDelay--;
-    }
+    } else {
+	  TimingDelay = 10000;
+	}
+	already_triggered = 0;
+}
+
+void EXTI0_1_IRQHandler(void) {
+  GPIO_WriteBit(GPIOB, GPIO_Pin_5,
+             (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
+//  already_triggered = 1;
+  EXTI_ClearITPendingBit(EXTI_Line0);
 }
 
 #ifdef  USE_FULL_ASSERT
