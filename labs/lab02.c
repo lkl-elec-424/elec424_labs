@@ -7,7 +7,7 @@
 TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 TIM_OCInitTypeDef  TIM_OCInitStructure;
 
-uint16_t CCR1_Val = 240;
+uint16_t CCR1_Val = 24;
 //uint32_t SystemCoreClock;
 uint32_t SystemCoreClock = 72000000;
 uint16_t motor1_speed;
@@ -44,18 +44,18 @@ int main(void)
       while(1);
     }
   NVIC_SetPriority(SysTick_IRQn, 0x00);
-  /*TIM_TimeBaseStructure.TIM_Period = 2400;
+  TIM_TimeBaseStructure.TIM_Period = 2400;
   TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
   TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
   TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;*/
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
 
   /* TIM configuration */
-TimingDelay = 100;
+TimingDelay = 1000;
 //GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
   while(1)
   {
@@ -104,8 +104,8 @@ TimingDelay = 100;
 void RCC_Configuration(void)
 {
    /* TIM3 and TIM4 clock enable */
-   /* RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 |
-                         RCC_APB1Periph_TIM4, ENABLE); */
+   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 |
+                         RCC_APB1Periph_TIM4, ENABLE);
     /* GPIOB clock enable */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 }
@@ -118,11 +118,11 @@ void GPIO_Configuration(void)
 
   // Configure pins for motors
   GPIO_InitTypeDef GPIO_InitStructure;
- /* GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-  GPIO_Init(GPIOB, &GPIO_InitStructure); */
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   //Configure pins for LEDs
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
@@ -187,26 +187,53 @@ void TimingDelay_Decrement(void)
     {
       TimingDelay--;
   }else {
-      TimingDelay = 99;
+      TimingDelay = 999;
   }
   //already_triggered = 0;
 }
 
 void chooseTask(void) {
 
- if (TimingDelay % 100 == 0) {
+  detectEmergency();
+  if (TimingDelay % 10 == 4){
+    refreshSensorData();}
+  else if (TimingDelay % 100 == 9){
+    calculateOrientation();}
+  else if (TimingDelay % 100 == 7){
+    updatePid(&motor_speeds);
+    // Get motor speeds from the struct
+    motor1_speed = (uint16_t)motor_speeds.m1;
+    motor2_speed = (uint16_t)motor_speeds.m2;
+    motor3_speed = (uint16_t)motor_speeds.m3;
+    motor4_speed = (uint16_t)motor_speeds.m4;
+
+    // Set motors
+    setMotor1(CCR1_Val * motor1_speed);
+    setMotor2(CCR1_Val * motor2_speed);
+    setMotor3(CCR1_Val * motor3_speed);
+    setMotor4(CCR1_Val * motor4_speed);
+  }
+  else if (TimingDelay % 10 == 1){
+    logDebugInfo();
+  }
+
+  if(TimingDelay % 100 == 0) {
               //already_triggered = 1;
 
-       GPIO_WriteBit(GPIOB, GPIO_Pin_4,
-               (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
+       GPIO_WriteBit(GPIOB, GPIO_Pin_5,
+                      (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
        //GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, DISABLE);
-/*     if (TimingDelay % 200 ==0){
-         GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_SET);
-     }else{
+       }
+  if (TimingDelay % 200 ==0){
+      // RED LED
+        GPIO_WriteBit(GPIOB, GPIO_Pin_4,
+                (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
+        //GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_SET);
+     }/*else{
          GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_RESET);
 
-     } */
-  }
+     }*/
+
 }
 
 #ifdef  USE_FULL_ASSERT
