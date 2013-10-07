@@ -1,30 +1,35 @@
-#include "main.h"
+#include "lab02.h"
 #include "init.h"
 #include "stm32f10x_it.h"
 #include "lab2.h"
 #include "stm32f10x_conf.h"
 #include "system_stm32f10x.h"
+
+// Structures to initialize the motor timers
 TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 TIM_OCInitTypeDef  TIM_OCInitStructure;
 
+// Pulse width for motors
 uint16_t CCR1_Val = 24;
-//uint32_t SystemCoreClock;
+
+// Clock speed as set in sys_init()
 uint32_t SystemCoreClock = 72000000;
+
+// Motor speed variables
 uint16_t motor1_speed;
 uint16_t motor2_speed;
 uint16_t motor3_speed;
 uint16_t motor4_speed;
-static  __IO uint32_t TimingDelay;
+
+// Motor speed struct
 MotorSpeeds motor_speeds;
 
-uint16_t already_triggered = 0;
-
+// Timing variable controlled by SysTick interrupts
+static  __IO uint32_t TimingDelay;
 
 /* Private function prototypes -----------------------------------------------*/
-
-
-void RCC_Configuration(void);
 void GPIO_Configuration(void);
+void RCC_Configuration(void);
 void setMotor1(uint16_t step);
 void setMotor2(uint16_t step);
 void setMotor3(uint16_t step);
@@ -32,30 +37,37 @@ void setMotor4(uint16_t step);
 
 int main(void)
 {
-  int pid_set_flag;
-  sys_init();
-  /* System Clocks Configuration */
-  RCC_Configuration();
-  /* GPIO Configuration */
-  GPIO_Configuration();
+	// Initialize the system clock to 72 MHz
+	sys_init();
 
-  if (SysTick_Config(SystemCoreClock/100))
-    {
-      while(1);
-    }
-  NVIC_SetPriority(SysTick_IRQn, 0x00);
-  TIM_TimeBaseStructure.TIM_Period = 2400;
-  TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;;
-  TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	/* System Clocks Configuration */
+	RCC_Configuration();
 
-  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	/* GPIO Configuration */
+	GPIO_Configuration();
+
+	// Start SysTick and configure it to request an interrupt every 10 ms
+	if (SysTick_Config(SystemCoreClock/100)) {
+			while(1);
+	}
+
+	// Set the SysTick interrupt to the highest priority
+	NVIC_SetPriority(SysTick_IRQn, 0x00);
+
+	// Initialize the motor timers
+	TIM_TimeBaseStructure.TIM_Period = 2400;
+	TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+	// Set timers to PWM mode
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
 
-  /* TIM configuration */
-TimingDelay = 1000;
+	/* TIM configuration */
+	TimingDelay = 1000;
 //GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
   while(1)
   {
