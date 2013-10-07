@@ -32,6 +32,7 @@
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 void TimingDelay_Decrement(void);
+void chooseTask(void);
 
 #endif /* __MAIN_H */
 

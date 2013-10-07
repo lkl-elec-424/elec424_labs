@@ -39,10 +39,11 @@ int main(void)
   /* GPIO Configuration */
   GPIO_Configuration();
 
-  if (SysTick_Config(SystemCoreClock/1000))
+  if (SysTick_Config(SystemCoreClock/100))
     {
       while(1);
     }
+  NVIC_SetPriority(SysTick_IRQn, 0x00);
   /*TIM_TimeBaseStructure.TIM_Period = 2400;
   TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)(SystemCoreClock/CCR1_Val)-1;;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
@@ -54,7 +55,8 @@ int main(void)
 
 
   /* TIM configuration */
-TimingDelay = 9999;
+TimingDelay = 100;
+//GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
   while(1)
   {
     /*if(TimingDelay % 10 == 0)
@@ -88,11 +90,11 @@ TimingDelay = 9999;
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
 
 	// Toggle the green LED
-} else*/ if (TimingDelay % 1000 == 13 && already_triggered == 0) {
+} else*//*if (TimingDelay % 1000 == 13 && already_triggered == 0) {
 	    already_triggered = 1;
       GPIO_WriteBit(GPIOB, GPIO_Pin_5,
              (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
-	}
+	}*/
 	
   }
 }
@@ -102,30 +104,33 @@ TimingDelay = 9999;
 void RCC_Configuration(void)
 {
    /* TIM3 and TIM4 clock enable */
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 |
-                         RCC_APB1Periph_TIM4, ENABLE);
+   /* RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 |
+                         RCC_APB1Periph_TIM4, ENABLE); */
     /* GPIOB clock enable */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 }
 
 void GPIO_Configuration(void)
 {
+
   // Disable JTAG so pin attached to red LED can be GPIO
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);	
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);
 
   // Configure pins for motors
   GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
+ /* GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 |GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_Init(GPIOB, &GPIO_InitStructure); */
 
   //Configure pins for LEDs
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+
 }
 
 void setMotor1(uint16_t step){
@@ -181,10 +186,27 @@ void TimingDelay_Decrement(void)
   if(TimingDelay != 0x00)
     {
       TimingDelay--;
-  }else if(TimingDelay == 0){
-      TimingDelay = 9999;
+  }else {
+      TimingDelay = 99;
   }
-  already_triggered = 0;
+  //already_triggered = 0;
+}
+
+void chooseTask(void) {
+
+ if (TimingDelay % 100 == 0) {
+              //already_triggered = 1;
+
+       GPIO_WriteBit(GPIOB, GPIO_Pin_4,
+               (BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
+       //GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, DISABLE);
+/*     if (TimingDelay % 200 ==0){
+         GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_SET);
+     }else{
+         GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_RESET);
+
+     } */
+  }
 }
 
 #ifdef  USE_FULL_ASSERT
