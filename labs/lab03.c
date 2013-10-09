@@ -6,7 +6,7 @@
 
 #include "init.h"
 #include "stm32f10x.h"
-#include "lab2.h"
+#include "lab3.h"
 #include "stm32f10x_conf.h"
 uint16_t CCR1_Val = 60;                 // PWM pulse value
 uint32_t SystemCoreClock = 72000000;    // SYSCLK frequency
