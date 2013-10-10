@@ -21,29 +21,37 @@
 //#include "list.h"
 #include "semphr.h"
 //#include "queue.h"
-//#include "portmacro.h"
+#include "portmacro.h"
 
 /* #Defines */
 #define MOTOR_PULSE_WIDTH 		24 			// PWM duty cycle width
 #define MOTOR_PERIOD			2400		// Total period for PWM
 #define SYS_CORE_CLK			72000000	// Clock speed of 72MHz
-#define INTERRUPT_PRIORITY_0	0x00		// Interrupt priority of 0
-#define DIV_10MS				100			// Sets SysTick interrupt to
+//#define INTERRUPT_PRIORITY_0	0x00		// Interrupt priority of 0
+//#define DIV_10MS				100			// Sets SysTick interrupt to
 											// every 10 ms
-#define TIMING_DELAY			1000		// Intial value for TimingDelay
-#define DELAY_100MS				10			// Counts until 100ms have elapsed
-#define DELAY_SEC				100			// Counts until 1 second 
-#define DELAY_2SEC				200			// Counts until 2 seconds
+//#define TIMING_DELAY			1000		// Intial value for TimingDelay
+//#define DELAY_100MS				10			// Counts until 100ms have elapsed
+//#define DELAY_SEC				100			// Counts until 1 second 
+//#define DELAY_2SEC				200			// Counts until 2 seconds
+#define TICKS_10MS				720000		// Clock ticks in 10ms	
+#define TICKS_100MS				7200000		// Clock ticks in 100ms	A
+#define TICKS_1SEC				7200000		// Clock ticks in 1 second
+#define TICKS_2SEC				144000000	// Clock ticks in 2 seconds
 
 // These offsets are used to schdule the different tasks in the SysTick
 // IRQ handler.
-#define LED_OFFSET				0			// Offset for LEDs in task chooser
+/*#define LED_OFFSET				0			// Offset for LEDs in task chooser
 #define DATA_OFFSET				4			// Offset for getting sensor data
 #define CALC_OFFSET				9			// Offset for orientation calc
 #define MOTOR_OFFSET			7			// Offset for getting and setting
 											// motor speeds
 #define DEBUG_OFFSET			1			// Offset for logging debug info
+*/
 
+#define STACK_SIZE 				100
+/* Task priority levels */
+#define LED_TASK_PRIORITY		(tskIDLE_PRIORITY + 1)
 
 /* Global variables */
 // Structures to initialize the motor timers
@@ -66,7 +74,10 @@ uint16_t motor4_speed;
 MotorSpeeds motor_speeds;
 
 // Timing variable controlled by SysTick interrupts
-static  __IO uint32_t TimingDelay;
+//static  __IO uint32_t TimingDelay;
+
+// Semaphore handle
+xSemaphoreHandle dataSemaphore;
 
 /* Private function prototypes -----------------------------------------------*/
 void GPIO_Configuration(void);
@@ -75,6 +86,16 @@ void setMotor1(uint16_t step);
 void setMotor2(uint16_t step);
 void setMotor3(uint16_t step);
 void setMotor4(uint16_t step);
+
+/* FreeRTOS Task Prototypes */
+void FreeRTOS_Configuration(void);
+void vTaskDetectEmergency(void *pvParameters); 
+void vTaskRefreshData(void *pvParameters);
+void vTaskCalcOrientation(void *pvParameters); 
+void vTaskUpdatePid(void *pvParameters); 
+void vTaskLogDebugInfo(void *pvParameters);
+void vTaskRedLED(void *pvParameters); 
+void vTaskGreenLED(void *pvParameters); 
 
 int main(void) {
 
@@ -87,13 +108,14 @@ int main(void) {
 	/* GPIO Configuration */
 	GPIO_Configuration();
 
+
 	// Start SysTick and configure it to request an interrupt every 10 ms
-	if (SysTick_Config(SystemCoreClock/DIV_10MS)) {
+/*	if (SysTick_Config(SystemCoreClock/DIV_10MS)) {
 			while(1);
-	}
+	}*/
 
 	// Set the SysTick interrupt to the highest priority
-	NVIC_SetPriority(SysTick_IRQn, INTERRUPT_PRIORITY_0);
+	//NVIC_SetPriority(SysTick_IRQn, INTERRUPT_PRIORITY_0);
 
 	// Initialize the motor timers
 	TIM_TimeBaseStructure.TIM_Period = MOTOR_PERIOD;
@@ -107,11 +129,43 @@ int main(void) {
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
 	// Set initial value of TimingDelay
-	TimingDelay = TIMING_DELAY;
+	//TimingDelay = TIMING_DELAY;
 
-	// Stay here forever and wait for interrupts
+	// Create the semaphore and tasks	
+	FreeRTOS_Configuration();	
+
+/*	// Stay here forever and wait for interrupts
 	while(1) {
-	}
+	} */
+	
+	// Start the FreeRTOS scheduler
+	vTaskStartScheduler();
+
+	// Should not ever get here!
+	return 0;
+}
+
+void FreeRTOS_Configuration(void) {
+
+	// Create the binary semaphore
+	//vSemaphoreCreateBinary(dataSemaphore);
+
+	// If the semaphore doesn't get created, TRAP.
+	/*if (dataSemaphore == NULL) {
+		for (;;){}	
+	} */
+
+	/*
+	 * Take the semaphore so that:
+	 * 1. The task for refreshSensorData can give it
+	 * 2. The task for calculateOrientation MUST wait for refreshSensorData
+	 *	  to execute to take it.
+	*/
+	//xSemaphoreTake(dataSemaphore, 0);
+
+	//Task creation
+	xTaskCreate(vTaskGreenLED, NULL, 100 , NULL, 
+		tskIDLE_PRIORITY, NULL);
 }
 
 /*
@@ -228,7 +282,7 @@ void setMotor4(uint16_t step){
  * Inputs - None
  * Outputs - None
  */
-void TimingDelay_Decrement(void)
+/*void TimingDelay_Decrement(void)
 {
   if(TimingDelay != 0) {
       TimingDelay--;
@@ -237,7 +291,115 @@ void TimingDelay_Decrement(void)
 		// a 0 offset twice in a row.
       TimingDelay = TIMING_DELAY - 1;
   }
-}
+} */
+
+void vTaskDetectEmergency(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_10MS;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for (;;) {
+		detectEmergency();
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+} 
+
+void vTaskRefreshData(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_100MS;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for (;;) {
+
+    	refreshSensorData();
+
+		// Give the semaphore so that the quadcopter orientation
+		// can be calculated
+		xSemaphoreGive(dataSemaphore);
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+	}
+} 
+
+void vTaskCalcOrientation(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_1SEC;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for (;;) {
+
+		// Block until the semaphore becomes available
+		xSemaphoreTake(dataSemaphore, portMAX_DELAY);
+		calculateOrientation();
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+} 
+
+void vTaskUpdatePid(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_1SEC;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for (;;) {
+		updatePid(&motor_speeds);
+
+		// Get motor speeds from the struct
+		motor1_speed = (uint16_t)motor_speeds.m1;
+		motor2_speed = (uint16_t)motor_speeds.m2;
+		motor3_speed = (uint16_t)motor_speeds.m3;
+		motor4_speed = (uint16_t)motor_speeds.m4;
+
+		// Set motors
+		setMotor1(CCR1_Val * motor1_speed);
+		setMotor2(CCR1_Val * motor2_speed);
+		setMotor3(CCR1_Val * motor3_speed);
+		setMotor4(CCR1_Val * motor4_speed);
+
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+} 
+
+void vTaskLogDebugInfo(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_1SEC;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for (;;) {
+		logDebugInfo();
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+} 
+
+void vTaskRedLED(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_2SEC;
+	xLastWakeTime = xTaskGetTickCount();
+
+	for (;;) {
+		GPIO_WriteBit(GPIOB, GPIO_Pin_4,
+			(BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
+
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+} 
+
+void vTaskGreenLED(void *pvParameters) {
+
+	portTickType xLastWakeTime;
+	const portTickType xFrequency = TICKS_10MS;
+	xLastWakeTime = xTaskGetTickCount();
+	for (;;) {
+		GPIO_WriteBit(GPIOB, GPIO_Pin_5,
+			(BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
+		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+	}
+} 
 
 /*
  * void chooseTask - Chooses which task(s) to execute based on the current
@@ -246,7 +408,7 @@ void TimingDelay_Decrement(void)
  * Inputs - None
  * Outputs - None
  */
-void chooseTask(void) {
+/*void chooseTask(void) {
 
 	// Interrupt happens every 10 ms, so detectEmergency() must happen 
     // every time this function is called.
@@ -290,5 +452,5 @@ void chooseTask(void) {
 			GPIO_WriteBit(GPIOB, GPIO_Pin_4,
 				(BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_4)));
 	}
-}
+}*/
 
