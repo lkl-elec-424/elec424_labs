@@ -27,17 +27,17 @@
 #define MOTOR_PULSE_WIDTH 		24 			// PWM duty cycle width
 #define MOTOR_PERIOD			2400		// Total period for PWM
 #define SYS_CORE_CLK			72000000	// Clock speed of 72MHz
-//#define INTERRUPT_PRIORITY_0	0x00		// Interrupt priority of 0
+#define INTERRUPT_PRIORITY_0	0x00		// Interrupt priority of 0
 //#define DIV_10MS				100			// Sets SysTick interrupt to
 											// every 10 ms
 //#define TIMING_DELAY			1000		// Intial value for TimingDelay
 //#define DELAY_100MS				10			// Counts until 100ms have elapsed
 //#define DELAY_SEC				100			// Counts until 1 second 
 //#define DELAY_2SEC				200			// Counts until 2 seconds
-#define TICKS_10MS				720000		// Clock ticks in 10ms	
-#define TICKS_100MS				7200000		// Clock ticks in 100ms	A
-#define TICKS_1SEC				7200000		// Clock ticks in 1 second
-#define TICKS_2SEC				144000000	// Clock ticks in 2 seconds
+#define TICKS_10MS				10		// Clock ticks in 10ms
+#define TICKS_100MS				100		// Clock ticks in 100ms
+#define TICKS_1SEC				1000		// Clock ticks in 1 second
+#define TICKS_2SEC				2000	        // Clock ticks in 2 seconds
 
 // These offsets are used to schdule the different tasks in the SysTick
 // IRQ handler.
@@ -72,7 +72,6 @@ uint16_t motor1_speed;
 uint16_t motor2_speed;
 uint16_t motor3_speed;
 uint16_t motor4_speed;
-
 // Motor speed struct
 MotorSpeeds motor_speeds;
 
@@ -104,7 +103,6 @@ int main(void) {
 
 	// Initialize the system clock to 72 MHz
 	sys_init();
-
 	/* System Clocks Configuration */
 	RCC_Configuration();
 
@@ -118,7 +116,7 @@ int main(void) {
 	}*/
 
 	// Set the SysTick interrupt to the highest priority
-	//NVIC_SetPriority(SysTick_IRQn, INTERRUPT_PRIORITY_0);
+	NVIC_SetPriority(SysTick_IRQn, INTERRUPT_PRIORITY_0);
 
 	// Initialize the motor timers
 	TIM_TimeBaseStructure.TIM_Period = MOTOR_PERIOD;
@@ -149,19 +147,19 @@ int main(void) {
 }
 
 
-void vApplicationTickHook( void )
+/*void vApplicationTickHook( void )
  {
 	 ul++;
- }
+ }*/
 void FreeRTOS_Configuration(void) {
 
 	// Create the binary semaphore
-	//vSemaphoreCreateBinary(dataSemaphore);
+	vSemaphoreCreateBinary(dataSemaphore);
 
 	// If the semaphore doesn't get created, TRAP.
-	/*if (dataSemaphore == NULL) {
+	if (dataSemaphore == NULL) {
 		for (;;){}	
-	} */
+	}
 
 	/*
 	 * Take the semaphore so that:
@@ -169,11 +167,24 @@ void FreeRTOS_Configuration(void) {
 	 * 2. The task for calculateOrientation MUST wait for refreshSensorData
 	 *	  to execute to take it.
 	*/
-	//xSemaphoreTake(dataSemaphore, 0);
+	xSemaphoreTake(dataSemaphore, 0);
 
 	//Task creation
-	xTaskCreate(vTaskGreenLED, NULL, 100 , NULL, 
-		tskIDLE_PRIORITY, NULL);
+
+	xTaskCreate(vTaskDetectEmergency, NULL, 100 , NULL,
+	    tskIDLE_PRIORITY+5, NULL);
+	xTaskCreate(vTaskRefreshData, NULL, 100 , NULL,
+	    tskIDLE_PRIORITY+4, NULL);
+	xTaskCreate(vTaskCalcOrientation, NULL, 100 , NULL,
+	    tskIDLE_PRIORITY+3, NULL);
+	xTaskCreate(vTaskUpdatePid, NULL, 100 , NULL,
+	    tskIDLE_PRIORITY+2, NULL);
+	xTaskCreate(vTaskLogDebugInfo, NULL, 100 , NULL,
+	    tskIDLE_PRIORITY+1, NULL);
+
+	xTaskCreate(vTaskGreenLED, NULL, 100 , NULL, tskIDLE_PRIORITY, NULL);
+
+	xTaskCreate(vTaskRedLED, NULL, 100 , NULL,tskIDLE_PRIORITY, NULL);
 }
 
 /*
@@ -334,7 +345,7 @@ void vTaskRefreshData(void *pvParameters) {
 void vTaskCalcOrientation(void *pvParameters) {
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequency = TICKS_1SEC;
+	const portTickType xFrequency = TICKS_100MS;
 	xLastWakeTime = xTaskGetTickCount();
 
 	for (;;) {
@@ -374,7 +385,7 @@ void vTaskUpdatePid(void *pvParameters) {
 void vTaskLogDebugInfo(void *pvParameters) {
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequency = TICKS_1SEC;
+	const portTickType xFrequency = TICKS_10MS;
 	xLastWakeTime = xTaskGetTickCount();
 
 	for (;;) {
@@ -400,12 +411,13 @@ void vTaskRedLED(void *pvParameters) {
 void vTaskGreenLED(void *pvParameters) {
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequency = TICKS_10MS;
+	const portTickType xFrequency = TICKS_1SEC;
 	xLastWakeTime = xTaskGetTickCount();
 	for (;;) {
+	        vTaskDelayUntil(&xLastWakeTime, xFrequency);
 		GPIO_WriteBit(GPIOB, GPIO_Pin_5,
 			(BitAction)(1 - GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5)));
-		vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
 	}
 } 
 

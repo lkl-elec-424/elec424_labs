@@ -29,7 +29,7 @@ void sys_init() {
      * Configure the PLL
      * PLLCLK = (HSE / 2) * 9 = 72 MHz 
      */
-    RCC_PLLConfig(RCC_PLLSource_HSE_Div1, RCC_PLLMul_9);
+    RCC_PLLConfig(RCC_PLLSource_HSE_Div2, RCC_PLLMul_9);
 
     // Enable the PLL and wait for it to turn on
     RCC_PLLCmd(ENABLE);
