@@ -58,6 +58,9 @@
 TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 TIM_OCInitTypeDef  TIM_OCInitStructure;
 
+// Debugging interrupt
+unsigned long ul = 0;
+
 // Pulse width for motors
 uint16_t CCR1_Val = MOTOR_PULSE_WIDTH;
 
@@ -145,6 +148,11 @@ int main(void) {
 	return 0;
 }
 
+
+void vApplicationTickHook( void )
+ {
+	 ul++;
+ }
 void FreeRTOS_Configuration(void) {
 
 	// Create the binary semaphore
